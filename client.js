@@ -123,6 +123,7 @@ window.__ModuleLoader__.load({
 			const [script, setScript] = useState(job.script || '')
 			const [busy, setBusy] = useState(false)
 			const [output, setOutput] = useState(null)
+			const [notify, setNotify] = useState(true)
 			const dirty = expr !== (job.schedule?.expr || '') || name !== (job.name || '') || script !== (job.script || '')
 
 			const run = async (kind, payload) => {
@@ -130,7 +131,15 @@ window.__ModuleLoader__.load({
 				try {
 					const out = await call('POST', payload || { op: kind, id: job.id })
 					if (!out.ok) onToast((kind === 'runNow' ? '执行失败：' : '操作失败：') + (out.error || 'exit ' + out.code), true)
-					else if (kind === 'runNow') { setOutput(out); onToast('执行完成，exit 0，' + out.ms + 'ms') }
+					else if (kind === 'runNow') {
+						setOutput(out)
+						const d = out.delivery
+						const tail = !d ? ''
+							: d.outcome === 'delivered' ? '，已发 Discord'
+								: d.outcome === 'skipped' ? '，没有投递（' + (d.error || '未配置频道') + '）'
+									: '，投递失败：' + (d.error || '未知错误')
+						onToast('执行完成，exit ' + out.code + '，' + out.ms + 'ms' + tail, Boolean(d && d.outcome === 'failed'))
+					}
 					else { onToast('已保存'); onChanged() }
 					return out
 				} catch (err) {
@@ -155,7 +164,13 @@ window.__ModuleLoader__.load({
 					h('button', { key: 't', className: 'hcr_btn', disabled: busy || !writable, onClick: () => run('setEnabled', { op: 'setEnabled', id: job.id, enabled: !job.enabled }) }, job.enabled ? '停用' : '启用'),
 					h('button', { key: 'v', className: 'hcr_btn hcr_btn_primary', disabled: busy || !writable || !dirty, onClick: () => run('saveJob', { op: 'saveJob', id: job.id, name, expr, script }) }, '保存'),
 					job.no_agent && job.script
-						? h('button', { key: 'r', className: 'hcr_btn', disabled: busy, onClick: () => run('runNow') }, '立即执行')
+						? h('button', { key: 'r', className: 'hcr_btn', disabled: busy, onClick: () => run('runNow', { op: 'runNow', id: job.id, deliver: notify }) }, '立即执行')
+						: null,
+					job.no_agent && job.script
+						? h('label', { key: 'nr', className: 'hcr_chip', style: { cursor: 'pointer', display: 'inline-flex', gap: 4, alignItems: 'center' }, title: '勾上就把这次手动执行的 stdout 也发到 Discord（失败时发错误摘要）' }, [
+							h('input', { type: 'checkbox', checked: notify, onChange: (e) => setNotify(e.target.checked) }),
+							'发 Discord',
+						])
 						: null,
 					h('button', { key: 'd', className: 'hcr_btn', disabled: busy || !writable, onClick: () => run('deleteJob') }, '删除'),
 				]),
@@ -167,7 +182,16 @@ window.__ModuleLoader__.load({
 					h('span', { key: 'st', className: lastStatus === 'failed' ? 'hcr_bad' : lastStatus ? 'hcr_ok' : '' }, '上次执行 ' + (lastStatus ? zhStatus(lastStatus) : '无记录')),
 					job.nextRunsError ? h('span', { key: 'e', className: 'hcr_bad' }, job.nextRunsError) : null,
 				]),
-				output ? h('div', { key: 'out' }, h('div', { className: 'hcr_pre' }, (output.stdout || '') + (output.stderr ? '\n[stderr]\n' + output.stderr : ''))) : null,
+				output
+					? h('div', { key: 'out' }, [
+						h('div', { key: 'meta2', className: 'hcr_meta' }, [
+							h('span', { key: 'd' }, '本次投递 ' + (output.delivery ? zhDelivery(output.delivery.outcome) : '未投递')),
+							output.delivery && output.delivery.error ? h('span', { key: 'de', className: 'hcr_bad' }, output.delivery.error) : null,
+							output.ledgerError ? h('span', { key: 'le', className: 'hcr_bad' }, '账本写入失败：' + output.ledgerError) : null,
+						]),
+						h('div', { key: 'pre', className: 'hcr_pre' }, (output.stdout || '') + (output.stderr ? '\n[stderr]\n' + output.stderr : '')),
+					])
+					: null,
 			])
 		}
 
@@ -237,7 +261,12 @@ window.__ModuleLoader__.load({
 					h('span', { key: 's', className: 'hcr_chip' }, '自有调度内核'),
 					h('span', { key: 'd', className: state.delivery && (state.delivery.token || state.delivery.webhook) ? 'hcr_chip hcr_chip_ok' : 'hcr_chip' },
 						state.delivery && (state.delivery.token || state.delivery.webhook) ? 'Discord 已连接' : 'Discord 未配置'),
-					h('button', { key: 'k', className: 'hcr_btn', onClick: async () => { const o = await call('POST', { op: 'tickNow' }); onToast('检查完成：跑了 ' + (o.ran || 0) + ' 条'); onChanged() } }, '立刻检查一次'),
+					h('button', { key: 'k', className: 'hcr_btn', onClick: async () => {
+						const o = await call('POST', { op: 'tickNow' })
+						const miss = o.missed ? '，记漏跑 ' + o.missed + ' 条' : ''
+						onToast(o.busy ? '上一轮扫描还没结束，这次跳过' : '检查完成：执行 ' + (o.executed || 0) + ' 条' + miss)
+						onChanged()
+					} }, '立刻检查一次'),
 				]),
 				h('div', { key: 'sub', className: 'hcr_sub' }, '任务文件 ' + state.jobsFile),
 				h('div', { key: 'jobs', className: 'hcr_sec' }, [
@@ -279,12 +308,17 @@ window.__ModuleLoader__.load({
 			const [userInput, setUserInput] = useState('')
 			const [users, setUsers] = useState(settings.allowedUsers || [])
 			const [busy, setBusy] = useState(false)
+			const [catchUpMin, setCatchUpMin] = useState(String(Math.round((settings.catchUpSec || 3600) / 60)))
+			const [coolMin, setCoolMin] = useState(String(Math.round((settings.missedNotifyCooldownSec || 1800) / 60)))
+			const notifyMissed = settings.missedNotify !== false
 
 			useEffect(() => {
 				setWebhook(settings.webhook || '')
 				setChannel(settings.channel || '')
 				setUsers(settings.allowedUsers || [])
-			}, [settings.webhook, settings.channel, JSON.stringify(settings.allowedUsers || [])])
+				setCatchUpMin(String(Math.round((settings.catchUpSec || 3600) / 60)))
+				setCoolMin(String(Math.round((settings.missedNotifyCooldownSec || 1800) / 60)))
+			}, [settings.webhook, settings.channel, JSON.stringify(settings.allowedUsers || []), settings.catchUpSec, settings.missedNotifyCooldownSec])
 
 			const save = async (patch) => {
 				setBusy(true)
@@ -399,6 +433,56 @@ window.__ModuleLoader__.load({
 					h('div', { key: 'act', className: 'hcr_row', style: { marginTop: 12 } }, [
 						h('button', { key: 't', className: 'hcr_btn hcr_btn_primary', disabled: busy, onClick: test }, '发送测试消息'),
 						h('span', { key: 'f', className: 'hcr_id' }, settings.file || ''),
+					]),
+				]),
+				h('div', { key: 'sched', className: 'hcr_card' }, [
+					h('div', { key: 't', className: 'hcr_row' }, [
+						h('span', { key: 'n', className: 'hcr_name' }, '调度容差'),
+						h('span', { key: 's', className: 'hcr_chip' + (notifyMissed ? ' hcr_chip_ok' : '') },
+							'容差 ' + Math.round((settings.catchUpSec || 3600) / 60) + ' 分钟 · 漏跑' + (notifyMissed ? '通知' : '只记账')),
+					]),
+					h('div', { key: 'g', className: 'hcr_hint' }, '到点后超过容差就算漏跑：不再静默跳过，会记一笔「错过」并（在同任务冷却时间内）通知一次。容差内的晚到照跑，stdout 照发。'),
+					h('div', { key: 'f1', className: 'hcr_field' }, [
+						h('div', { key: 'l', className: 'hcr_label' }, '容差（分钟）'),
+						h('div', { key: 'g', className: 'hcr_hint' }, '0 表示只认准点那一分钟。机器会休眠/任务要联网时给足，例如 120。'),
+						h('div', { key: 'row', className: 'hcr_input_row' }, [
+							h('input', {
+								key: 'i', className: 'hcr_in', style: { width: 90 }, value: catchUpMin, spellCheck: false,
+								onChange: (e) => setCatchUpMin(e.target.value),
+							}),
+							h('button', {
+								key: 's', className: 'hcr_btn hcr_btn_primary', disabled: busy,
+								onClick: () => {
+									const n = Number(catchUpMin)
+									if (!Number.isFinite(n) || n < 0) { onToast('容差要是 >= 0 的分钟数', true); return }
+									save({ catchUpSec: Math.round(n * 60) })
+								},
+							}, '保存'),
+						]),
+					]),
+					h('div', { key: 'f2', className: 'hcr_field' }, [
+						h('div', { key: 'l', className: 'hcr_label' }, '漏跑通知'),
+						h('div', { key: 'g', className: 'hcr_hint' }, '关掉只记账本不打扰；冷却用于合并「关机很久、积了很多次」的重复提醒。'),
+						h('div', { key: 'row', className: 'hcr_input_row' }, [
+							h('label', { key: 'chk', className: 'hcr_chip', style: { cursor: 'pointer', display: 'inline-flex', gap: 4, alignItems: 'center' } }, [
+								h('input', { type: 'checkbox', checked: notifyMissed, disabled: busy, onChange: (e) => save({ missedNotify: e.target.checked }) }),
+								'漏跑时发消息',
+							]),
+							h('span', { key: 'cl', className: 'hcr_id' }, '冷却'),
+							h('input', {
+								key: 'i', className: 'hcr_in', style: { width: 80 }, value: coolMin, spellCheck: false,
+								onChange: (e) => setCoolMin(e.target.value),
+							}),
+							h('span', { key: 'u', className: 'hcr_id' }, '分钟'),
+							h('button', {
+								key: 's', className: 'hcr_btn', disabled: busy,
+								onClick: () => {
+									const n = Number(coolMin)
+									if (!Number.isFinite(n) || n < 0) { onToast('冷却要是 >= 0 的分钟数', true); return }
+									save({ missedNotifyCooldownSec: Math.round(n * 60) })
+								},
+							}, '保存'),
+						]),
 					]),
 				]),
 				h('div', { key: 'other', className: 'hcr_card' }, [
