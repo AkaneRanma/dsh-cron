@@ -1,12 +1,12 @@
-# dsh-corn bundle patch
+# dsh-cron bundle patch
 #
 # 只注册一个宿主插件：它自带调度内核（进程内 ticker），在自己的 jobs.json 里跑脚本型任务，
-# 并在 DSH 的 webServer 上挂 /dsh-corn/api 供侧栏面板读写。
+# 并在 DSH 的 webServer 上挂 /dsh-cron/api 供侧栏面板读写。
 # 面板由 dsh.client（client.js）提供，不依赖任何产品包内部实现。
 
 - insert:
-    - id: dsh-corn
-      name: 'dsh-corn'
+    - id: dsh-cron
+      name: 'dsh-cron'
       inject: [webServer]
       config:
         enabled: true

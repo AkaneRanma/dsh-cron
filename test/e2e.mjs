@@ -22,7 +22,7 @@ function boot(opts) {
 function req(method, query, body) {
   const r = new EventEmitter()
   r.method = method
-  r.url = '/dsh-corn/api' + (query || '')
+  r.url = '/dsh-cron/api' + (query || '')
   r.headers = { host: '127.0.0.1:52391', 'content-type': 'application/json' }
   r.socket = { remoteAddress: '127.0.0.1' }
   if (body !== undefined) {

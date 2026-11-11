@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-  把 dsh-corn 挂进 DSH profile（默认 desktop）。
+  把 dsh-cron 挂进 DSH profile（默认 desktop）。
 .DESCRIPTION
   只改 profile 的 package.json 两处：
-    1. dependencies 加 "dsh-corn": "link:<本目录绝对路径>"
-    2. dsh.profile.bundles 追加 "dsh-corn"
+    1. dependencies 加 "dsh-cron": "link:<本目录绝对路径>"
+    2. dsh.profile.bundles 追加 "dsh-cron"
   默认演练（只打印），-Apply 才写盘，写前自动备份。
   写完必须在 profile 目录跑 pnpm install，再重启 DSH。
 .EXAMPLE
@@ -20,7 +20,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$name = "dsh-corn"
+$name = "dsh-cron"
 $profileDir = Join-Path $env:USERPROFILE ".dsh\profiles\$Profile"
 $manifest = Join-Path $profileDir "package.json"
 $pluginManifest = Join-Path $PluginPath "package.json"
@@ -47,7 +47,7 @@ Write-Host "当前     : dependency=$hasDep bundle=$hasBundle"
 if ($Remove) {
   if (-not ($hasDep -or $hasBundle)) { Write-Host "本来就沒装，无需移除。"; return }
   if (-not $Apply) { Write-Host "[演练] 将移除依赖与 bundles 条目；加 -Apply 执行。"; return }
-  Copy-Item -LiteralPath $manifest -Destination "$manifest.bak-dshcorn-$(Get-Date -Format yyyyMMddHHmmss)" -Force
+  Copy-Item -LiteralPath $manifest -Destination "$manifest.bak-dshcron-$(Get-Date -Format yyyyMMddHHmmss)" -Force
   if ($hasDep) { $pkg.dependencies.PSObject.Properties.Remove($name) }
   $pkg.dsh.profile.bundles = @($bundles | Where-Object { $_ -ne $name })
   ($pkg | ConvertTo-Json -Depth 32) | Set-Content -LiteralPath $manifest -Encoding utf8
@@ -64,7 +64,7 @@ if (-not $Apply) {
   return
 }
 
-Copy-Item -LiteralPath $manifest -Destination "$manifest.bak-dshcorn-$(Get-Date -Format yyyyMMddHHmmss)" -Force
+Copy-Item -LiteralPath $manifest -Destination "$manifest.bak-dshcron-$(Get-Date -Format yyyyMMddHHmmss)" -Force
 if (-not $hasDep) { $pkg.dependencies | Add-Member -NotePropertyName $name -NotePropertyValue $linkSpec -Force }
 if (-not $hasBundle) { $pkg.dsh.profile.bundles = @($bundles + $name) }
 ($pkg | ConvertTo-Json -Depth 32) | Set-Content -LiteralPath $manifest -Encoding utf8

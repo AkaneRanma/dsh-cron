@@ -46,7 +46,7 @@ const one = await deliver({ dataHome, writable: false }, { id: 'fmt-check', name
 console.log('单条投递:', JSON.stringify(one))
 
 const res = await fetch('https://discord.com/api/v10/channels/' + channel + '/messages?limit=1', {
-  headers: { authorization: 'Bot ' + token, 'user-agent': 'DiscordBot (dsh-corn)' },
+  headers: { authorization: 'Bot ' + token, 'user-agent': 'DiscordBot (dsh-cron)' },
   signal: AbortSignal.timeout(15000),
 })
 const list = await res.json()

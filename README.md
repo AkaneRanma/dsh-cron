@@ -1,4 +1,4 @@
-# 定时任务（dsh-corn）
+# 定时任务（dsh-cron）
 
 给 DSH 侧栏加一条 **定时任务**：列出所有任务与下次到点时间，可新建、改 cron、启停、删除、手动跑脚本型任务，执行结果落进账本，并能把脚本输出投递到 Discord。
 
@@ -7,8 +7,8 @@
 ## 装 / 卸
 
 ```powershell
-git clone https://github.com/AkaneRanma/dsh-corn
-cd dsh-corn
+git clone https://github.com/AkaneRanma/dsh-cron
+cd dsh-cron
 .\install.ps1            # 演练：只打印将改 profile 的哪两处
 .\install.ps1 -Apply     # 写 profile/package.json（自动 .bak 备份）
 cd "$env:USERPROFILE\.dsh\profiles\desktop"; pnpm install
@@ -17,7 +17,7 @@ cd "$env:USERPROFILE\.dsh\profiles\desktop"; pnpm install
 
 卸载：`.\install.ps1 -Apply -Remove` → `pnpm install` → 重启。
 
-`install.ps1` 只动两处：`<DSH_HOME>/profiles/*/package.json` 的 `dependencies` 加一条 `dsh-corn: link:<本目录>`，以及插件清单里加 `dsh-corn`。改前自动备份，`-Remove` 按备份还原。
+`install.ps1` 只动两处：`<DSH_HOME>/profiles/*/package.json` 的 `dependencies` 加一条 `dsh-cron: link:<本目录>`，以及插件清单里加 `dsh-cron`。改前自动备份，`-Remove` 按备份还原。
 
 ## 面板
 

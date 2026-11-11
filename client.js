@@ -1,12 +1,12 @@
 /**
- * dsh-corn —— 浏览器半侧：侧栏「定时任务」入口 + 整页面板（任务 / 消息平台两页）。
+ * dsh-cron —— 浏览器半侧：侧栏「定时任务」入口 + 整页面板（任务 / 消息平台两页）。
  *
- * 数据来自宿主路由 /dsh-corn/api。任务事实源是 <DSH_HOME>/schedule/jobs.json，
+ * 数据来自宿主路由 /dsh-cron/api。任务事实源是 <DSH_HOME>/schedule/jobs.json，
  * 消息平台设置存 <DSH_HOME>/schedule/settings.json（面板保存即生效，不用重启）。
  */
 
 window.__ModuleLoader__.load({
-	id: 'dsh-corn',
+	id: 'dsh-cron',
 	factory(require) {
 		var module = { exports: {} }
 		var exports = module.exports
@@ -16,9 +16,9 @@ window.__ModuleLoader__.load({
 		const h = React.createElement
 		const { useState, useEffect, useCallback, useMemo } = React
 
-		const PANEL_ID = 'corn'
+		const PANEL_ID = 'cron'
 		const PANEL_LABEL = '定时任务'
-		const API = '/dsh-corn/api'
+		const API = '/dsh-cron/api'
 
 		const CSS = [
 			'.hcr_page{padding:18px 22px;overflow:auto;height:100%;box-sizing:border-box;color:var(--dsw-alias-label-primary)}',
@@ -451,10 +451,10 @@ window.__ModuleLoader__.load({
 			ctxRef.current = ctx
 			ctx.effect(() => {
 				if (typeof document === 'undefined') return () => {}
-				const tagId = 'dsh-corn/panel.css'
+				const tagId = 'dsh-cron/panel.css'
 				if (document.querySelector('style[data-plugin-css=' + JSON.stringify(tagId) + ']') !== null) return () => {}
 				const tag = document.createElement('style')
-				tag.dataset.plugin = 'dsh-corn'
+				tag.dataset.plugin = 'dsh-cron'
 				tag.dataset.pluginCss = tagId
 				tag.textContent = CSS
 				document.head.appendChild(tag)
@@ -469,7 +469,7 @@ window.__ModuleLoader__.load({
 			}, Icon))
 		}
 
-		exports.name = 'dsh-corn'
+		exports.name = 'dsh-cron'
 		exports.inject = inject
 		exports.apply = apply
 		return module.exports
