@@ -27,3 +27,5 @@ jobs:
         run: node test/settings-e2e.mjs
       - name: 投递格式（无凭据时只验分片）
         run: node test/deliver-format.mjs
+      - name: 一次性自毁（建 → 到点删 → 摘任务 → 账本）
+        run: node test/oneshot.mjs

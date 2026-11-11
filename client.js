@@ -68,7 +68,7 @@ window.__ModuleLoader__.load({
 
 		const STATUS_LABEL = {
 			claimed: '领取中', running: '执行中', completed: '成功', failed: '失败',
-			unknown: '未知', cancelled: '已取消', missed: '错过',
+			unknown: '未知', cancelled: '已取消', missed: '错过', skipped: '已跳过',
 		}
 		const DELIVERY_LABEL = {
 			delivered: '已送达', skipped: '未配置频道', failed: '发送失败', pending: '待发送', ok: '已送达',
@@ -223,14 +223,17 @@ window.__ModuleLoader__.load({
 				return () => { alive = false }
 			}, [])
 
-			const jobs = state.jobs || []
-			const execs = (state.ledger?.executions || []).slice(0, 15)
+			const allJobs = state.jobs || []
+			const jobs = allJobs.filter((j) => !(j.schedule && j.schedule.kind === 'once'))
+			const onceCount = allJobs.length - jobs.length
+			const execs = (state.ledger?.executions || []).filter((r) => !String(r.job_id || '').startsWith('purge-')).slice(0, 15)
 			const writable = state.writable
 
 			return h('div', null, [
 				h('div', { key: 'chips', className: 'hcr_head' }, [
 					h('span', { key: 'c', className: 'hcr_chip' }, jobs.filter((j) => j.enabled).length + ' / ' + jobs.length + ' 启用'),
 					h('span', { key: 'n', className: 'hcr_chip' }, native === null ? '原生自动化任务：未取到' : '原生自动化任务：' + native + ' 条'),
+					onceCount ? h('span', { key: 'o', className: 'hcr_chip' }, '一次性任务 ' + onceCount + ' 条在「一次性清理」页') : null,
 					h('span', { key: 's', className: 'hcr_chip' }, '自有调度内核'),
 					h('span', { key: 'd', className: state.delivery && (state.delivery.token || state.delivery.webhook) ? 'hcr_chip hcr_chip_ok' : 'hcr_chip' },
 						state.delivery && (state.delivery.token || state.delivery.webhook) ? 'Discord 已连接' : 'Discord 未配置'),
@@ -405,6 +408,84 @@ window.__ModuleLoader__.load({
 			])
 		}
 
+		/* ---------- 一次性清理页 ---------- */
+
+		const PURGE_PREFIX = 'purge-'
+
+		function fmtSpan(sec) {
+			if (sec === null || sec === undefined) return '—'
+			const s = Number(sec)
+			if (!Number.isFinite(s)) return '—'
+			if (s <= 0) return '待执行'
+			if (s < 60) return s + ' 秒后'
+			if (s < 3600) return Math.round(s / 60) + ' 分钟后'
+			if (s < 86400) return Math.floor(s / 3600) + ' 小时 ' + Math.round((s % 3600) / 60) + ' 分后'
+			return Math.floor(s / 86400) + ' 天 ' + Math.round((s % 86400) / 3600) + ' 小时后'
+		}
+
+		function PurgePage({ state, onChanged, onToast }) {
+			const [busy, setBusy] = useState('')
+			const jobs = (state.jobs || []).filter((j) => j.kind === 'once' || (j.schedule && j.schedule.kind === 'once'))
+			const records = (state.ledger?.executions || []).filter((r) => String(r.job_id || '').startsWith(PURGE_PREFIX)).slice(0, 40)
+			const nameById = state.jobNames || {}
+			const writable = state.writable
+
+			const act = async (op, id, okText) => {
+				setBusy(id + op)
+				try {
+					const out = await call('POST', { op, id })
+					if (!out.ok) onToast('失败：' + (out.error || '未知错误'), true)
+					else { onToast(okText); onChanged() }
+				} catch (err) {
+					onToast('请求失败：' + String(err && err.message ? err.message : err), true)
+				} finally { setBusy('') }
+			}
+
+			return h('div', null, [
+				h('div', { key: 'chips', className: 'hcr_head' }, [
+					h('span', { key: 'a', className: 'hcr_chip' }, '待销毁 ' + jobs.length + ' 条'),
+					h('span', { key: 'b', className: 'hcr_chip' }, '已销毁 ' + records.filter((r) => r.status === 'completed').length + ' 次'),
+					h('span', { key: 'c', className: 'hcr_chip' }, '到点自动删，删完从任务列表消失，记录留账本'),
+				]),
+				h('div', { key: 'sub', className: 'hcr_sub' }, '一次性产物（测试脚本、备份、截图、dump）交给这里定时销毁：到期删路径，删完在下面留一条记录。'),
+				h('div', { key: 'pend', className: 'hcr_sec' }, [
+					h('div', { key: 't', className: 'hcr_sec_title' }, '待销毁'),
+					jobs.length === 0
+						? h('div', { key: 'e', className: 'hcr_empty' }, '没有待销毁的任务')
+						: jobs.map((job) => h('div', { key: job.id, className: 'hcr_card' }, [
+							h('div', { key: 'r', className: 'hcr_row' }, [
+								h('span', { key: 'n', className: 'hcr_name' }, job.name || job.id),
+								h('span', { key: 'w', className: 'hcr_chip' }, fmtSpan(job.dueInSec)),
+								h('button', { key: 'x', className: 'hcr_btn', disabled: busy || !writable, onClick: () => act('runPurgeNow', job.id, '已销毁：' + (job.name || job.id)) }, '立即销毁'),
+								h('button', { key: 'd', className: 'hcr_btn', disabled: busy || !writable, onClick: () => act('deleteJob', job.id, '已取消') }, '取消'),
+							]),
+							h('div', { key: 'm', className: 'hcr_meta' }, [
+								h('span', { key: 'at' }, '到点 ' + fmtTime(job.at)),
+								h('span', { key: 'p' }, '路径 ' + (((job.cleanup && job.cleanup.paths) || []).join(' · ') || '—')),
+								job.cleanup && job.cleanup.note ? h('span', { key: 'nt' }, '备注 ' + job.cleanup.note) : null,
+							]),
+						])),
+				]),
+				h('div', { key: 'rec', className: 'hcr_sec' }, [
+					h('div', { key: 't', className: 'hcr_sec_title' }, '销毁记录'),
+					records.length === 0
+						? h('div', { key: 'e', className: 'hcr_empty' }, state.ledger?.error || '还没有销毁记录')
+						: h('table', { key: 'tbl', className: 'hcr_tbl' }, [
+							h('thead', { key: 'h' }, h('tr', null, [
+								h('th', { key: 'a' }, '计划时间'), h('th', { key: 'b' }, '任务'),
+								h('th', { key: 'c' }, '结果'), h('th', { key: 'd' }, '明细'),
+							])),
+							h('tbody', { key: 'b' }, records.map((row, i) => h('tr', { key: i }, [
+								h('td', { key: 'a' }, fmtTime(row.scheduled_instant)),
+								h('td', { key: 'b' }, nameById[row.job_id] || h('span', { className: 'hcr_id', title: row.job_id }, '已销毁的任务')),
+								h('td', { key: 'c', className: BAD_STATUS[row.status] ? 'hcr_bad' : '' }, row.status === 'completed' ? '已删除' : row.status === 'skipped' ? '已跳过（错过窗口）' : zhStatus(row.status)),
+								h('td', { key: 'd' }, row.detail || zhError(row.error)),
+							]))),
+						]),
+				]),
+			])
+		}
+
 		function CronPage() {
 			const [state, setState] = useState(null)
 			const [error, setError] = useState(null)
@@ -438,10 +519,13 @@ window.__ModuleLoader__.load({
 				h('div', { key: 'tabs', className: 'hcr_tabs' }, [
 					h('button', { key: 't1', className: 'hcr_tab' + (tab === 'tasks' ? ' hcr_tab_on' : ''), onClick: () => setTab('tasks') }, '任务'),
 					h('button', { key: 't2', className: 'hcr_tab' + (tab === 'platform' ? ' hcr_tab_on' : ''), onClick: () => setTab('platform') }, '消息平台'),
+					h('button', { key: 't3', className: 'hcr_tab' + (tab === 'purge' ? ' hcr_tab_on' : '') , onClick: () => setTab('purge') }, '一次性清理'),
 				]),
 				tab === 'tasks'
 					? h(TasksPage, { key: 'tasks', state, onChanged: load, onToast })
-					: h(PlatformPage, { key: 'platform', state, onChanged: load, onToast }),
+					: tab === 'platform'
+						? h(PlatformPage, { key: 'platform', state, onChanged: load, onToast })
+						: h(PurgePage, { key: 'purge', state, onChanged: load, onToast }),
 			])
 		}
 

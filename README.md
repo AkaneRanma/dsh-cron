@@ -21,7 +21,7 @@ cd "$env:USERPROFILE\.dsh\profiles\desktop"; pnpm install
 
 ## 面板
 
-顶部两个页签：**任务** / **消息平台**。
+顶部三个页签：**任务** / **消息平台** / **一次性清理**。
 
 | 操作 | 行为 |
 | --- | --- |
@@ -31,6 +31,8 @@ cd "$env:USERPROFILE\.dsh\profiles\desktop"; pnpm install
 | 立即执行 | 只对脚本型（`no_agent` + `script`），返回 stdout/stderr |
 | 删除 | 从任务文件移除该条 |
 | 立刻检查一次 | 手动触发一次 tick，看哪些到点被执行 |
+
+任务页只列 cron 型任务；一次性自毁任务在第三个页签，见下节。
 
 agent 型任务（需要模型与会话）不执行，只显示、不提供运行按钮。
 
@@ -47,6 +49,23 @@ agent 型任务（需要模型与会话）不执行，只显示、不提供运�
 | 发送测试消息 | 立刻发一条固定文本，验证凭据可用 |
 
 三者全清空时 `settings.json` 会被删除，回落到 `cordis.patch.yml` 的初值。
+
+## 一次性自毁任务
+
+给临时产物（测试脚本、备份、截图、dump）建一条一次性任务：到点删路径，删完自己从 `jobs.json` 消失，执行记录留在账本，面板第三页可查。
+
+| 通道 | 做法 |
+| --- | --- |
+| CLI（最省事） | `node bin/purge-later.mjs --after 120 --note "说明" "E:\\workplace\\tmp\\x.ps1"` |
+| 查待销毁 | `node bin/purge-later.mjs --list` |
+| HTTP | `POST /dsh-cron/api {"op":"purgeLater","paths":["..."],"afterMinutes":120,"note":"..."}` |
+| 面板 | 第三个页签「一次性清理」：看待销毁、倒计时、立即销毁、取消，下方是销毁记录 |
+
+数据模型：`schedule.kind = "once"` + `cleanup.paths`。ticker 到点执行 `cleanup`（目录递归删、文件直接删），成功后只摘 `jobs.json`，`names.json` 与账本保留，记录里仍有中文名。失败（被占用等）时任务转停用保留，账本记失败原因。
+
+安全闸（`cleanupGuard`）：只收绝对路径；拒绝盘符根、层级过浅、用户主目录、`DSH_HOME`、本插件数据目录本身。越界直接拒，不做「尽力删除」。
+
+错过窗口仍补跑：默认 `purgeMaxLatenessSec` 30 天，关机一夜回来照样删；超过才记 `skipped`。
 
 ## 数据在哪
 

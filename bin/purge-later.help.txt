@@ -1,0 +1,21 @@
+一次性自毁任务（dsh-cron）
+
+用法
+  node bin/purge-later.mjs --after 120 --note "临时测试夹具" "E:\workplace\tmp\x.ps1"
+  node bin/purge-later.mjs --after-hours 8 "E:\workplace\_archive\2026-11-12-shots"
+  node bin/purge-later.mjs --list
+
+参数
+  --after <分钟>       多久之后销毁（默认取配置 purgeDefaultMinutes = 120）
+  --after-hours <小时> 同上，按小时给
+  --note <文字>        备注，会进任务名与记录
+  --data-home <目录>   任务目录，默认 <DSH_HOME>/schedule
+  --list               列出待销毁任务与最近销毁记录
+  --json               机器可读输出
+
+退出码
+  0 建好 / 列出成功    1 被拒绝或写盘失败    2 参数缺失
+
+约束
+  只收绝对路径。盘符根、用户主目录、DSH_HOME、schedule 目录本身会被拒绝；
+  路径被占用时记录为失败并保留任务，不会静默跳过。

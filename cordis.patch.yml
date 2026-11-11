@@ -18,6 +18,10 @@
         tickMs: 20000
         # 到点后多久之内还补跑（秒）；超过就跳过，避免开机时把一整天任务连着重放
         maxLatenessSec: 3600
+        # 一次性自毁任务：没给 --after 时默认多久后销毁（分钟）
+        purgeDefaultMinutes: 120
+        # 一次性自毁任务错过窗口多久还补跑（秒）：默认 30 天，关机一夜也能补上
+        purgeMaxLatenessSec: 2592000
         # 脚本解释器；.py 用这个，.mjs/.js 用 node，其它走 shell
         pythonCommand: 'python'
         # 投递：优先 discordWebhook（整条 URL），否则 discordToken + 任务的 deliver=discord:频道ID
