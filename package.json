@@ -1,7 +1,7 @@
 {
-  "name": "dsh-hermes-cron",
+  "name": "dsh-corn",
   "version": "0.2.0",
-  "description": "DSH 侧栏「定时任务」：自带 cron 调度内核与执行账本，可建任务、改表达式、手动执行、投递到 Discord；装了 hermes 也能把它的任务一键接管过来。",
+  "description": "DSH 侧栏「定时任务」：自带 cron 调度内核与执行账本，可建任务、改表达式、启停、手动执行，并把脚本输出投递到 Discord。",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -43,11 +43,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AkaneRanma/dsh-hermes-cron.git"
+    "url": "git+https://github.com/AkaneRanma/dsh-corn.git"
   },
-  "homepage": "https://github.com/AkaneRanma/dsh-hermes-cron#readme",
+  "homepage": "https://github.com/AkaneRanma/dsh-corn#readme",
   "bugs": {
-    "url": "https://github.com/AkaneRanma/dsh-hermes-cron/issues"
+    "url": "https://github.com/AkaneRanma/dsh-corn/issues"
   },
   "author": "AkaneRanma",
   "engines": {

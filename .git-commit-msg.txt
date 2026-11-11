@@ -1,6 +1,0 @@
-feat: DSH 定时任务插件（自带 cron 内核 + Discord 投递）
-
-- lib/index.js：5 段 cron 解析器、进程内 ticker、执行账本（node:sqlite，唯一键防重复）、脚本执行、Discord 投递（原文 Markdown / 超长自动分段）
-- client.js：侧栏「定时任务」两页签（任务 / 消息平台），账本状态中文显示，任务名登记表让删掉的任务仍显示原名
-- test/*：客户端冒烟、宿主端到端、设置端到端、投递格式验证
-- CI：Node 22 + Python 3.12 跑全部测试

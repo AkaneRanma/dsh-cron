@@ -1,12 +1,12 @@
 /**
- * dsh-hermes-cron —— 浏览器半侧：侧栏「定时任务」入口 + 整页面板（任务 / 消息平台两页）。
+ * dsh-corn —— 浏览器半侧：侧栏「定时任务」入口 + 整页面板（任务 / 消息平台两页）。
  *
- * 数据来自宿主路由 /hermes-cron/api。任务事实源是 <DSH_HOME>/schedule/jobs.json，
+ * 数据来自宿主路由 /dsh-corn/api。任务事实源是 <DSH_HOME>/schedule/jobs.json，
  * 消息平台设置存 <DSH_HOME>/schedule/settings.json（面板保存即生效，不用重启）。
  */
 
 window.__ModuleLoader__.load({
-	id: 'dsh-hermes-cron',
+	id: 'dsh-corn',
 	factory(require) {
 		var module = { exports: {} }
 		var exports = module.exports
@@ -16,9 +16,9 @@ window.__ModuleLoader__.load({
 		const h = React.createElement
 		const { useState, useEffect, useCallback, useMemo } = React
 
-		const PANEL_ID = 'hermes-cron'
+		const PANEL_ID = 'corn'
 		const PANEL_LABEL = '定时任务'
-		const API = '/hermes-cron/api'
+		const API = '/dsh-corn/api'
 
 		const CSS = [
 			'.hcr_page{padding:18px 22px;overflow:auto;height:100%;box-sizing:border-box;color:var(--dsw-alias-label-primary)}',
@@ -79,7 +79,7 @@ window.__ModuleLoader__.load({
 		function zhStatus(v) { return STATUS_LABEL[v] || (v ? String(v) : '—') }
 		function zhDelivery(v) { return DELIVERY_LABEL[v] || (v ? String(v) : '—') }
 
-		/** 老记录里 hermes 写的英文错误也翻一下，翻不出来的原样显示。 */
+		/** 老记录里的英文错误也翻一下，翻不出来的原样显示。 */
 		function zhError(text) {
 			const s = String(text || '').trim()
 			if (!s) return '—'
@@ -231,25 +231,12 @@ window.__ModuleLoader__.load({
 				h('div', { key: 'chips', className: 'hcr_head' }, [
 					h('span', { key: 'c', className: 'hcr_chip' }, jobs.filter((j) => j.enabled).length + ' / ' + jobs.length + ' 启用'),
 					h('span', { key: 'n', className: 'hcr_chip' }, native === null ? '原生自动化任务：未取到' : '原生自动化任务：' + native + ' 条'),
-					h('span', { key: 's', className: 'hcr_chip' }, state.source === 'own' ? '自有调度内核' : '继承 hermes（只读源）'),
+					h('span', { key: 's', className: 'hcr_chip' }, '自有调度内核'),
 					h('span', { key: 'd', className: state.delivery && (state.delivery.token || state.delivery.webhook) ? 'hcr_chip hcr_chip_ok' : 'hcr_chip' },
 						state.delivery && (state.delivery.token || state.delivery.webhook) ? 'Discord 已连接' : 'Discord 未配置'),
 					h('button', { key: 'k', className: 'hcr_btn', onClick: async () => { const o = await call('POST', { op: 'tickNow' }); onToast('检查完成：跑了 ' + (o.ran || 0) + ' 条'); onChanged() } }, '立刻检查一次'),
 				]),
 				h('div', { key: 'sub', className: 'hcr_sub' }, '任务文件 ' + state.jobsFile),
-				state.source === 'hermes'
-					? h('div', { key: 'banner', className: 'hcr_banner' }, [
-						h('span', { key: 't' }, '当前展示的是 hermes 的旧任务文件，本面板只读它、不执行它。卸载 hermes 后这里就空了。'),
-						h('button', {
-							key: 'i', className: 'hcr_btn hcr_btn_primary', disabled: !writable,
-							onClick: async () => {
-								const out = await call('POST', { op: 'importHermes' })
-								if (!out.ok) onToast('接管失败：' + out.error, true)
-								else { onToast(out.note || ('已接管 ' + out.imported + ' 条任务')); onChanged() }
-							},
-						}, '接管为我的任务'),
-					])
-					: null,
 				h('div', { key: 'jobs', className: 'hcr_sec' }, [
 					h('div', { key: 'title', className: 'hcr_sec_title' }, '任务（ticker 每 ' + Math.round((state.tickMs || 20000) / 1000) + 's 扫一次）'),
 					writable ? h(NewJob, { key: 'new', onCreate: onChanged, onToast }) : null,
@@ -464,10 +451,10 @@ window.__ModuleLoader__.load({
 			ctxRef.current = ctx
 			ctx.effect(() => {
 				if (typeof document === 'undefined') return () => {}
-				const tagId = 'dsh-hermes-cron/panel.css'
+				const tagId = 'dsh-corn/panel.css'
 				if (document.querySelector('style[data-plugin-css=' + JSON.stringify(tagId) + ']') !== null) return () => {}
 				const tag = document.createElement('style')
-				tag.dataset.plugin = 'dsh-hermes-cron'
+				tag.dataset.plugin = 'dsh-corn'
 				tag.dataset.pluginCss = tagId
 				tag.textContent = CSS
 				document.head.appendChild(tag)
@@ -482,7 +469,7 @@ window.__ModuleLoader__.load({
 			}, Icon))
 		}
 
-		exports.name = 'dsh-hermes-cron'
+		exports.name = 'dsh-corn'
 		exports.inject = inject
 		exports.apply = apply
 		return module.exports

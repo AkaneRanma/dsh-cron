@@ -20,7 +20,7 @@ mod.apply({
 function req(method, body) {
 	const r = new EventEmitter()
 	r.method = method
-	r.url = '/hermes-cron/api'
+	r.url = '/dsh-corn/api'
 	r.headers = { host: '127.0.0.1:51023', 'content-type': 'application/json' }
 	r.socket = { remoteAddress: '127.0.0.1' }
 	if (body !== undefined) {
