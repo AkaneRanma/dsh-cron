@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 版本
+        run: node --version && python --version
+      - name: 客户端冒烟
+        run: node test/client-smoke.mjs
+      - name: 宿主端到端
+        run: node test/e2e.mjs
+      - name: 设置端到端
+        run: node test/settings-e2e.mjs
+      - name: 投递格式（无凭据时只验分片）
+        run: node test/deliver-format.mjs

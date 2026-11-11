@@ -1,0 +1,25 @@
+# dsh-hermes-cron bundle patch
+#
+# 只注册一个宿主插件：它自带调度内核（进程内 ticker），在自己的 jobs.json 里跑脚本型任务，
+# 并在 DSH 的 webServer 上挂 /hermes-cron/api 供侧栏面板读写。
+# 面板由 dsh.client（client.js）提供，不依赖任何产品包内部实现。
+
+- insert:
+    - id: dsh-hermes-cron
+      name: 'dsh-hermes-cron'
+      inject: [webServer]
+      config:
+        enabled: true
+        # 任务与账本落在哪；留空 = <DSH_HOME>/schedule
+        dataHome: ''
+        # 允许面板写回任务文件（关掉则纯只读展示）
+        writable: true
+        # ticker 间隔（毫秒）
+        tickMs: 20000
+        # 到点后多久之内还补跑（秒）；超过就跳过，避免开机时把一整天任务连着重放
+        maxLatenessSec: 3600
+        # 脚本解释器；.py 用这个，.mjs/.js 用 node，其它走 shell
+        pythonCommand: 'python'
+        # 投递：优先 discordWebhook（整条 URL），否则 discordToken + 任务的 deliver=discord:频道ID
+        discordWebhook: ''
+        discordToken: ''
