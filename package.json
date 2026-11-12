@@ -1,6 +1,6 @@
 {
   "name": "dsh-cron",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "DSH 侧栏「定时任务」：自带 cron 调度内核与执行账本，可建任务、改表达式、启停、手动执行，并把脚本输出投递到 Discord。",
   "type": "module",
   "main": "./lib/index.js",

@@ -311,6 +311,7 @@ window.__ModuleLoader__.load({
 			const [catchUpMin, setCatchUpMin] = useState(String(Math.round((settings.catchUpSec || 3600) / 60)))
 			const [coolMin, setCoolMin] = useState(String(Math.round((settings.missedNotifyCooldownSec || 1800) / 60)))
 			const notifyMissed = settings.missedNotify !== false
+			const missedCatchUp = settings.missedCatchUpOnce === true
 
 			useEffect(() => {
 				setWebhook(settings.webhook || '')
@@ -483,6 +484,17 @@ window.__ModuleLoader__.load({
 								},
 							}, '保存'),
 						]),
+					]),
+				]),
+				h('div', { key: 'f3', className: 'hcr_field' }, [
+					h('div', { key: 'l', className: 'hcr_label' }, '漏跑也补跑一次'),
+					h('div', { key: 'g', className: 'hcr_hint' }, '开启后超出容差的到点不整批作废：每次补扫最多真跑一次（最近的那次到点），更早的合并记「错过」。适合机器会休眠、又不想把容差开得很大的情况。'),
+					h('div', { key: 'row', className: 'hcr_input_row' }, [
+						h('label', { key: 'chk', className: 'hcr_chip', style: { cursor: 'pointer', display: 'inline-flex', gap: 4, alignItems: 'center' } }, [
+							h('input', { type: 'checkbox', checked: missedCatchUp, disabled: busy, onChange: (e) => save({ missedCatchUpOnce: e.target.checked }) }),
+							'漏跑只补最近一次',
+						]),
+						h('span', { key: 's', className: 'hcr_id' }, missedCatchUp ? '已开启：醒来后最多补跑 1 次' : '关闭：超出容差一律只记账'),
 					]),
 				]),
 				h('div', { key: 'other', className: 'hcr_card' }, [

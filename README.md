@@ -86,6 +86,7 @@ agent 型任务（需要模型与会话）不执行，只显示、不提供运�
 - 一次 tick 没跑完，下一次直接返回 `busy`（脚本比 `tickMs` 还慢时不会两个 tick 抢同一分钟）；同一任务在跑时其它 tick 跳过它。
 - **容差 `catchUpSec`（默认 3600s）内**：晚到照跑，账本记 `detail=晚到执行（晚 N）`，输出照发；同一窗口里更早的几个到点合并成一次，不连环重放。
 - **超出容差**：不再静默跳过 —— 记账本 `status=missed`，并（同任务冷却 `missedNotifyCooldownSec` 内只发一次）通知 Discord「错过到点执行，这次没有执行脚本」。
+- **超出容差但开了 `missedCatchUpOnce`**：本轮到点里只真跑最近一次（`detail=漏跑补跑一次（晚 N）`），更早的合并记 `missed`，不会连环重放；随后的 tick 因账本已占位不会重复补。通知文案变成「已补跑最近一次到点」，适合机器会休眠、又不想把容差开得很大的场景。
 - 漏跑回看下界：任务 `created_at`（新建时自动写入，按分钟取整），所以新任务不会凭空翻出创建前的「历史漏跑」；老任务没有该字段且账本为空时只回看最近一天。窗口上限 `missedLookbackMinutes`（默认 3 天）。
 - 卡死的 `running` 行（超过 `timeoutMs`+2 分钟还没收尾，说明上次进程崩了）会被忽略并允许本轮重跑。
 - 脚本按扩展名选解释器：`.py` → `pythonCommand`，`.mjs/.js/.cjs` → 当前 node，其它走 shell；超时 `timeoutMs`（默认 300s）强杀。
@@ -114,6 +115,7 @@ agent 型任务（需要模型与会话）不执行，只显示、不提供运�
 | `missedNotify` | `true` | 漏跑是否发 Discord 通知 |
 | `missedNotifyCooldownSec` | `1800` | 同一任务漏跑通知的冷却 |
 | `missedLookbackMinutes` | `4320` | 漏跑回看窗口（分钟，默认 3 天） |
+| `missedCatchUpOnce` | `false` | 超出容差也只补跑最近一次（休眠后不想整批作废时开） |
 | `timeoutMs` | `300000` | 单个脚本超时 |
 | `pythonCommand` | `python` | `.py` 解释器 |
 | `discordWebhook` / `discordToken` | 空 | 投递凭据 |
@@ -125,9 +127,10 @@ node test\client-smoke.mjs    # 客户端骨架：导出形状、两条 slot 是
 node test\e2e.mjs             # 宿主端到端：建任务 / 到点执行 / 账本 / 同一分钟不重复 / 手动跑
 node test\settings-e2e.mjs    # 凭据与默认频道：保存 -> 打码回读 -> 清空；删掉的任务仍记住名字
 node test\deliver-format.mjs  # 投递格式：分片逻辑；配了凭据就真发一条到 Discord 核对渲染
+node test\missed-catchup.mjs  # 漏跑兜底：超容差只补跑最近一次；关掉后恢复「只记账」
 ```
 
-前三个都在临时 `dataHome` 里跑，不碰真实配置、不发消息；只有最后一个会真的发。CI（`.github/workflows/ci.yml`）用 Node 22 + Python 3.12 跑全部四个。
+前四个（含 `missed-catchup`）都在临时 `dataHome` 里跑，不碰真实配置、不发消息；只有 `deliver-format` 在配了凭据时会真发。CI（`.github/workflows/ci.yml`）用 Node 22 + Python 3.12 跑全部五个。
 
 ## 已知边界
 

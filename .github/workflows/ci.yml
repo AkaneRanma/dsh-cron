@@ -29,3 +29,5 @@ jobs:
         run: node test/deliver-format.mjs
       - name: 一次性自毁（建 → 到点删 → 摘任务 → 账本）
         run: node test/oneshot.mjs
+      - name: 漏跑兜底（超容差只补跑最近一次）
+        run: node test/missed-catchup.mjs
