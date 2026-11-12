@@ -102,6 +102,7 @@ ok('1b 只真跑一次', runs() === 1, 'runs=' + runs())
 ok('1c 一条执行 + 其余记错过', done1.length === 1 && miss1.length >= 3, { done: done1.length, missed: miss1.length })
 ok('1d 执行记录标明漏跑补跑', String(done1[0] && done1[0].detail || '').includes('漏跑补跑一次'), done1[0] && done1[0].detail)
 ok('1e 脚本输出只投递一次', posts.filter((p) => String(p).includes('catchup fixture')).length === 1, posts.length)
+ok('1f 补跑不发「错过到点执行」通知', posts.filter((p) => String(p).includes('错过到点执行')).length === 0, posts.length)
 
 /* ---------- 2. 再扫一次不会重复补跑 ---------- */
 await hit('POST', '', { op: 'tickNow' })
@@ -121,6 +122,7 @@ await new Promise((r) => setTimeout(r, 300))
 const rows3 = await rowsOf(job3)
 ok('3b 关闭时一次都不跑', runs() === before3, 'runs=' + runs())
 ok('3c 全部记错过', rows3.length > 0 && rows3.every((r) => r.status === 'missed'), rows3.map((r) => r.status))
+ok('3d 没补跑时才发「错过到点执行」通知', posts.filter((p) => String(p).includes('错过到点执行')).length === 1, posts.filter((p) => String(p).includes('错过到点执行')).length)
 
 console.log(fails === 0 ? 'ALL PASS' : 'FAILS=' + fails)
 hooks.close()
